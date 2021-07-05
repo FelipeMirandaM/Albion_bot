@@ -223,11 +223,33 @@ def temp_load(data):
     cursor.close()
     MyConexion.cerrar_conexion()
 
+def GetCurrentFame():
+    MyConexion = Conexion.Conexion()
+    MyConexion.crear_conexion()
+    cursor = MyConexion.get_conexion().cursor(buffered=True)
+    User_Information = ("SELECT p.name, pf.total, pf.pvp, pf.pve, pf.gather, pf.craft, pf.total, pf.id  FROM player_fame as pf, player as p where pf.current = 1 and p.guild <> 0  and p.playerid = pf.playerid  ")
+    Info = None
+    try:
+        cursor.execute(User_Information)
+        MyConexion.get_conexion().commit()
+        Info = cursor.fetchall()
+    except TypeError as e:
+        MyConexion.get_conexion().rollback()
+        print(e)
+    finally:
+        cursor.close()
+        MyConexion.cerrar_conexion()
+        return Info
 def load_fame_history():
     con = conection_lite.conection()
     member_list = con.get_member_list()
     today = datetime.now()
+    currentData = GetCurrentFame()
+    dataMap = {}
+    for data in currentData:
+        dataMap[data[0].lower()] = data
     data_load = []
+    changeList = []
     member_list_db = get_member_list()
     member_list_dictionary = {}
     if member_list_db is not None:
@@ -237,9 +259,7 @@ def load_fame_history():
             member_list_dictionary[member[1].lower()] = member
 
         for member in member_list:
-
-            if member[0] in member_list_dictionary:
-
+            if member[0] in member_list_dictionary and member[0] not in dataMap.keys():
                 id = member_list_dictionary[member[0]][0]
                 pvp = member[3]
                 pve = member[2]
@@ -249,12 +269,24 @@ def load_fame_history():
                 current = 1
                 date = today
                 data_load.append((id, pvp, pve, gather, craft, total, current, date))
+            elif member[0] in member_list_dictionary and member[0] in dataMap.keys() and (member[1] != dataMap[member[0]][1]):
+                id = member_list_dictionary[member[0]][0]
+                pvp = member[3]
+                pve = member[2]
+                gather = member[6]
+                craft = member[4]
+                total = member[1]
+                current = 1
+                date = today
+                changeList.append(dataMap[member[0]][7])
+                data_load.append((id, pvp, pve, gather, craft, total, current, date))
+    dataLoad = [data_load, changeList]
 
-    load_data_fame(data_load)
-
+    load_data_fame(dataLoad)
+    print("fama actualizada")
 
 def load_data_fame(data):
-    update_current()
+    update_current(data[1])
     MyConexion = Conexion.Conexion()
     MyConexion.crear_conexion()
     cursor = MyConexion.get_conexion().cursor()
@@ -262,7 +294,7 @@ def load_data_fame(data):
                  "(playerid, pvp, pve, gather, craft, total, current, date) "
                  "VALUES (%s, %s, %s,%s, %s, %s, %s, %s)")
     try:
-        cursor.executemany(load_data, data)
+        cursor.executemany(load_data, data[0])
         MyConexion.get_conexion().commit()
     except mysql.connector.Error as err:
         print(err)
@@ -271,20 +303,26 @@ def load_data_fame(data):
         cursor.close()
         MyConexion.cerrar_conexion()
 
-def update_current():
-    MyConexion = Conexion.Conexion()
-    MyConexion.crear_conexion()
-    cursor = MyConexion.get_conexion().cursor()
-    load_data = ("UPDATE player_fame SET current = 0 WHERE current = 1")
-    try:
-        cursor.execute(load_data)
-        MyConexion.get_conexion().commit()
-    except mysql.connector.Error as err:
-        print(err)
-        MyConexion.get_conexion().rollback()
-    finally:
-        cursor.close()
-        MyConexion.cerrar_conexion()
+
+def update_current(data):
+    if len(data) > 0:
+        print(len(data))
+        MyConexion = Conexion.Conexion()
+        MyConexion.crear_conexion()
+        cursor = MyConexion.get_conexion().cursor()
+        load_data = ("UPDATE player_fame SET current = 0 WHERE id IN (%s) ")
+        try:
+            format_strings = ','.join(['%s'] * len(data))
+            cursor.execute(load_data % format_strings, tuple(data))
+            MyConexion.get_conexion().commit()
+        except mysql.connector.Error as err:
+            print(err)
+            MyConexion.get_conexion().rollback()
+        finally:
+            cursor.close()
+            MyConexion.cerrar_conexion()
+
+
 def is_white_list(discord_id):
     con = conection_lite.conection()
     white_list = con.is_white_list(discord_id)
