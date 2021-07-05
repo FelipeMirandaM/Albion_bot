@@ -10,7 +10,7 @@ class Conexion:
 
     def crear_conexion(self):
         config_object = ConfigParser()
-        config_object.read("config.ini")
+        config_object.read("config/config.ini")
         userInfo = config_object["USERINFO"]
         serverConfig = config_object["SERVERCONFIG"]
         try:

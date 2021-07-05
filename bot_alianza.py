@@ -14,7 +14,7 @@ intents = discord.Intents.default()
 intents.members = True
 client = commands.Bot(command_prefix = "D!", intents = intents, case_insensitive=True)
 config_object = ConfigParser()
-config_object.read("config.ini")
+config_object.read("config/config.ini")
 botConfig = config_object["BOTCONFIG"]
 
 first_run = True
@@ -306,8 +306,8 @@ async def VerificarMiembros():
             await channel.send(Lista_Display_Name)
 
         print("Miembros Verificados")
-        #Util.load_fame_history()
-        #print("Fama cargada")
+        Util.load_fame_history()
+        print("Fama cargada")
 
 
 
